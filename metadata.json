@@ -1,0 +1,5 @@
+{
+  "name": "AdminForge",
+  "description": "Auto-generate functional admin dashboards from database schemas or Django models.",
+  "requestFramePermissions": []
+}
