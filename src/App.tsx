@@ -112,6 +112,35 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
   const [view, setView] = useState<'landing' | 'dashboard' | 'builder'>('landing');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [profileName, setProfileName] = useState('');
+
+  useEffect(() => {
+    // Handle Supabase OAuth redirect (access token in URL hash)
+    async function handleOAuthRedirect() {
+      try {
+        if (!supabase) return;
+        const hash = window.location.hash || '';
+        if (hash.includes('access_token') || hash.includes('provider_token') || hash.includes('refresh_token')) {
+          const { data, error } = await supabase.auth.getSessionFromUrl();
+          if (error) {
+            console.error('Error parsing OAuth redirect:', error);
+            toast.error('Authentication failed during redirect');
+          } else {
+            toast.success('Signed in successfully');
+          }
+          // Remove tokens from URL for cleanliness
+          try {
+            const cleanUrl = window.location.pathname + window.location.search;
+            window.history.replaceState({}, document.title, cleanUrl);
+          } catch (e) {
+            // ignore
+          }
+        }
+      } catch (err) {
+        console.error('OAuth handling error', err);
+      }
+    }
+    handleOAuthRedirect();
+  }, []);
   
   // Schema Builder State
   const [rawInput, setRawInput] = useState('');
