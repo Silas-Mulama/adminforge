@@ -110,16 +110,16 @@ export function AuthForm() {
 
       <CardContent className="space-y-6 relative">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-zinc-900/50 p-1 border border-zinc-800/50 rounded-xl h-12">
+            <TabsList className="grid w-full grid-cols-2 bg-zinc-900/50 p-1 border border-zinc-800/50 rounded-xl h-12">
             <TabsTrigger 
               value="login" 
-              className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
+              className="rounded-lg text-zinc-300 data-[state=active]:bg-zinc-800 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
             >
               Login
             </TabsTrigger>
             <TabsTrigger 
               value="register" 
-              className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
+              className="rounded-lg text-zinc-300 data-[state=active]:bg-zinc-800 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
             >
               Register
             </TabsTrigger>

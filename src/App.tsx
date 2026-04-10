@@ -497,10 +497,10 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
             <Badge variant="outline" className="mb-4 border-orange-500/20 text-orange-500 bg-orange-500/5 px-3 py-1 uppercase tracking-wider text-sm">
               v1.0 is now live
             </Badge>
-            <h1 className="text-3xl md:text-7xl font-bold tracking-tighter mb-6 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent">
+            <h1 className="text-3xl md:text-7xl font-bold tracking-tighter mb-6 text-white md:bg-gradient-to-b md:from-white md:to-zinc-500 md:bg-clip-text md:text-transparent">
               Turn your schema into a <br /> powerful admin dashboard.
             </h1>
-            <p className="text-zinc-400 text-base md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+            <p className="text-zinc-200 text-base md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
               AdminForge auto-generates CRUD pages, analytics, and RBAC from your database schema or Django models in seconds.
             </p>
             <div className="flex items-center justify-center gap-4">
