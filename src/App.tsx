@@ -12,9 +12,10 @@ import {
   FileCode,
   MoreVertical,
   Trash2,
-  Pencil
+  Pencil,
+  Menu
 } from 'lucide-react';
-import { supabase } from '@/src/lib/supabase';
+import { supabase, hasSupabaseCredentials } from '@/src/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -47,6 +48,7 @@ import {
   DialogTitle, 
   DialogTrigger 
 } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Toaster, toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 import { parseSchema, generateDashboardConfig } from '@/src/lib/schema-engine';
@@ -117,6 +119,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
   const [inputType, setInputType] = useState<'sql' | 'django' | 'json'>('sql');
   const [parsing, setParsing] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -175,6 +178,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
     }
   };
 
+  
   const fetchProjects = async () => {
     if (!activeWorkspace) return;
     const { data, error } = await supabase
@@ -197,7 +201,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
     fetchProjects();
   }, [activeWorkspace]);
 
-  const createWorkspace = async () => {
+  async function createWorkspace() {
     if (!user || !newWorkspaceName.trim()) return;
     try {
       const { data, error } = await supabase
@@ -221,6 +225,147 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
       handleDatabaseError(error, OperationType.CREATE, 'workspaces', user, onError);
     }
   };
+
+  const sidebarContent = (
+    <div className="flex flex-col h-full">
+      <div className="p-6 flex items-center gap-2 border-b border-zinc-800/50 md:border-b-0">
+        <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
+          <Database className="w-5 h-5 text-white" />
+        </div>
+        <span className="font-bold text-lg tracking-tight">AdminForge</span>
+      </div>
+
+      <div className="p-4 flex-1 overflow-auto">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2 px-2">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Workspaces</span>
+            <Dialog open={isCreatingWorkspace} onOpenChange={setIsCreatingWorkspace}>
+              <DialogTrigger render={<button className="p-1 text-zinc-500 hover:text-white transition-colors cursor-pointer" />}>
+                <Plus className="w-4 h-4" />
+              </DialogTrigger>
+              <DialogContent className="bg-zinc-950 border-zinc-800 text-white">
+                <DialogHeader>
+                  <DialogTitle>Create Workspace</DialogTitle>
+                  <DialogDescription>Enter a name for your new workspace.</DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <Label htmlFor="ws-name" className="text-zinc-400">Workspace Name</Label>
+                  <Input 
+                    id="ws-name"
+                    value={newWorkspaceName}
+                    onChange={(e) => setNewWorkspaceName(e.target.value)}
+                    placeholder="e.g. Production, Staging"
+                    className="bg-zinc-900 border-zinc-800 mt-2 text-white"
+                    onKeyDown={(e) => e.key === 'Enter' && createWorkspace()}
+                  />
+                </div>
+                <DialogFooter>
+                  <Button onClick={createWorkspace} className="bg-orange-600 hover:bg-orange-700 w-full">
+                    Create Workspace
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <div className="space-y-1">
+            {workspaces.map(ws => (
+              <div key={ws.id} className="group relative">
+                <button
+                  onClick={() => {
+                    setActiveWorkspace(ws);
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all flex items-center gap-2 ${
+                    activeWorkspace?.id === ws.id ? 'bg-orange-600/10 text-orange-500' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
+                  }`}
+                >
+                  {activeWorkspace?.id === ws.id && <div className="w-1.5 h-1.5 bg-orange-500 rounded-full shrink-0" />}
+                  <span className="truncate pr-8">{ws.name}</span>
+                </button>
+
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-40 group-hover:opacity-100 transition-opacity">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-500 hover:text-white" />}>
+                      <MoreVertical className="w-3.5 h-3.5" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-zinc-950 border-zinc-800 text-white">
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          setEditingWorkspace(ws);
+                          setEditWorkspaceName(ws.name);
+                          setIsEditingWorkspace(true);
+                        }}
+                        className="flex items-center gap-2 cursor-pointer"
+                      >
+                        <Pencil className="w-4 h-4" />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setWorkspaceToDelete(ws)}
+                        className="flex items-center gap-2 text-red-400 focus:text-red-400 cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <nav className="space-y-1">
+          <div className="px-2 mb-2">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Main</span>
+          </div>
+          <button 
+            onClick={() => {
+              setView('dashboard');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${view === 'dashboard' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50'}`}
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            Dashboards
+          </button>
+          <button 
+            onClick={() => {
+              setView('builder');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${view === 'builder' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50'}`}
+          >
+            <Plus className="w-4 h-4" />
+            New Dashboard
+          </button>
+        </nav>
+      </div>
+
+      <div className="mt-auto p-4 border-t border-zinc-800/50">
+        <div className="flex items-center gap-3 px-3 py-2 mb-2 group cursor-pointer hover:bg-zinc-800/50 rounded-md transition-colors" onClick={() => {
+          setIsProfileModalOpen(true);
+          setIsMobileSidebarOpen(false);
+        }}>
+          <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-medium group-hover:bg-zinc-700">
+            {user?.email?.[0]?.toUpperCase() || ''}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate group-hover:text-white">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}</p>
+            <p className="text-xs text-zinc-500 truncate">{user?.email || ''}</p>
+          </div>
+          <Settings className="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400" />
+        </div>
+        <button 
+          onClick={handleSignOut}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-zinc-400 hover:bg-zinc-800/50 hover:text-red-400 transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </button>
+      </div>
+    </div>
+  );
 
   const updateWorkspace = async () => {
     if (!editWorkspaceName.trim() || !editingWorkspace) return;
@@ -299,6 +444,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
           workspace_id: activeWorkspace.id,
           name: newDashboardName.trim() || `Project ${projects.length + 1}`,
           description: `Generated from ${inputType.toUpperCase()} schema`,
+          inputType,
           created_by: user.id,
           config: { ...config, dashboardConfig } // Merging for simplicity in this demo
         });
@@ -330,9 +476,9 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
             <span className="font-bold text-xl tracking-tight">AdminForge</span>
           </div>
           <div className="flex items-center gap-4">
-            <Button onClick={() => setIsAuthModalOpen(true)} variant="outline" className="border-zinc-700 hover:bg-zinc-800">
+            {/* <Button onClick={() => setIsAuthModalOpen(true)} variant="outline" className="border-zinc-700 hover:bg-zinc-800">
               Sign In
-            </Button>
+            </Button> */}
             <Button onClick={() => setIsAuthModalOpen(true)} className="bg-orange-600 hover:bg-orange-700">
               Get Started
             </Button>
@@ -351,22 +497,22 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Badge variant="outline" className="mb-4 border-orange-500/20 text-orange-500 bg-orange-500/5 px-3 py-1">
+            <Badge variant="outline" className="mb-4 border-orange-500/20 text-orange-500 bg-orange-500/5 px-3 py-1 uppercase tracking-wider text-sm">
               v1.0 is now live
             </Badge>
-            <h1 className="text-6xl md:text-7xl font-bold tracking-tighter mb-6 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent">
+            <h1 className="text-3xl md:text-7xl font-bold tracking-tighter mb-6 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent">
               Turn your schema into a <br /> powerful admin dashboard.
             </h1>
-            <p className="text-zinc-400 text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+            <p className="text-zinc-400 text-base md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
               AdminForge auto-generates CRUD pages, analytics, and RBAC from your database schema or Django models in seconds.
             </p>
             <div className="flex items-center justify-center gap-4">
-              <Button size="lg" onClick={() => setIsAuthModalOpen(true)} className="bg-orange-600 hover:bg-orange-700 text-white px-8 h-12 text-lg">
+              <Button size="lg" onClick={() => setIsAuthModalOpen(true)} className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-md shadow-lg hover:shadow-xl transition-transform transform-gpu hover:-translate-y-0.5">
                 Get Started Free
               </Button>
-              <Button size="lg" variant="outline" className="border-zinc-700 hover:bg-zinc-800 h-12 text-lg">
+              {/* <Button size="lg" variant="outline" className="border-zinc-700 hover:bg-zinc-800 px-6 py-3 rounded-md shadow-sm hover:shadow-md transition-transform transform-gpu hover:-translate-y-0.5">
                 View Demo
-              </Button>
+              </Button> */}
             </div>
           </motion.div>
 
@@ -393,17 +539,17 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex dark">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col md:flex-row dark">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-zinc-800/50 flex flex-col bg-zinc-900/20">
-        <div className="p-6 flex items-center gap-2 border-b border-zinc-800/50">
+      <aside className="hidden md:flex w-64 border-r border-zinc-800/50 flex flex-col bg-zinc-900/20">
+        <div className="p-4 md:p-6 flex items-center gap-2 border-b border-zinc-800/50 md:border-b-0">
           <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
             <Database className="w-5 h-5 text-white" />
           </div>
           <span className="font-bold text-lg tracking-tight">AdminForge</span>
         </div>
 
-        <div className="p-4">
+        <div className="p-4 md:p-4 flex-1 overflow-auto">
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2 px-2">
               <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Workspaces</span>
@@ -503,13 +649,13 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
 
         <div className="mt-auto p-4 border-t border-zinc-800/50">
           <div className="flex items-center gap-3 px-3 py-2 mb-2 group cursor-pointer hover:bg-zinc-800/50 rounded-md transition-colors" onClick={() => setIsProfileModalOpen(true)}>
-            <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-medium group-hover:bg-zinc-700">
-              {user.email?.[0].toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate group-hover:text-white">{user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'}</p>
-              <p className="text-xs text-zinc-500 truncate">{user.email}</p>
-            </div>
+              <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-medium group-hover:bg-zinc-700">
+                {user?.email?.[0]?.toUpperCase() || ''}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate group-hover:text-white">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}</p>
+                <p className="text-xs text-zinc-500 truncate">{user?.email || ''}</p>
+              </div>
             <Settings className="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400" />
           </div>
           <button 
@@ -524,11 +670,17 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 border-b border-zinc-800/50 flex items-center justify-between px-8 bg-zinc-950/50 backdrop-blur-sm">
-          <h2 className="font-semibold text-lg">
+        <header className="h-16 border-b border-zinc-800/50 flex flex-col gap-3 justify-center px-4 md:px-8 bg-zinc-950/50 backdrop-blur-sm md:flex-row md:items-center md:justify-between">
+          <h2 className="font-semibold text-lg text-center md:text-left">
             {view === 'dashboard' ? 'My Dashboards' : 'Generate New Dashboard'}
           </h2>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-center gap-4">
+            <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+              <SheetTrigger render={<Button variant="ghost" size="icon" className="md:hidden text-zinc-400"><Menu className="w-5 h-5" /></Button>} />
+              <SheetContent side="left" className="bg-zinc-950 border-r border-zinc-800 text-white p-0">
+                {sidebarContent}
+              </SheetContent>
+            </Sheet>
             <Button variant="ghost" size="icon" className="text-zinc-400">
               <Settings className="w-5 h-5" />
             </Button>
@@ -536,7 +688,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
         </header>
 
         <ScrollArea className="flex-1">
-          <div className="p-8 max-w-6xl mx-auto">
+          <div className="p-4 md:p-8 max-w-6xl mx-auto">
             <AnimatePresence mode="wait">
               {selectedProject ? (
                 <motion.div
@@ -581,7 +733,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                           <CardHeader>
                             <div className="flex justify-between items-start mb-2">
                               <Badge variant="secondary" className="bg-zinc-800 text-zinc-400 group-hover:bg-orange-500/10 group-hover:text-orange-500">
-                                {s.inputType.toUpperCase()}
+                                {((s.inputType || s.config?.inputType || 'unknown') as string).toUpperCase()}
                               </Badge>
                               <span className="text-[10px] text-zinc-600 uppercase font-bold tracking-widest">
                                 {s.created_at ? new Date(s.created_at).toLocaleDateString() : 'Recent'}
@@ -589,7 +741,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                             </div>
                             <CardTitle className="text-white group-hover:text-orange-500 transition-colors">{s.name}</CardTitle>
                             <CardDescription className="text-zinc-500 line-clamp-2">
-                              {s.config.models.length} Models detected: {s.config.models.map((m: any) => m.name).join(', ')}
+                              {(s.config?.models?.length ?? 0)} Models detected: {(Array.isArray(s.config?.models) ? s.config.models.map((m: any) => m.name).join(', ') : 'N/A')}
                             </CardDescription>
                           </CardHeader>
                           <CardContent>
@@ -760,6 +912,27 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
 
 export default function App() {
   const [error, setError] = useState<any>(null);
+
+  if (!hasSupabaseCredentials) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full bg-zinc-900 border-zinc-800 text-white">
+          <CardHeader>
+            <CardTitle className="text-red-500">Supabase Configuration Required</CardTitle>
+            <CardDescription className="text-zinc-400">
+              Missing environment variables: <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>.
+              Create a <code>.env.local</code> file or copy <code>.env.example</code> and restart the dev server.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => window.location.reload()} className="w-full bg-zinc-800 hover:bg-zinc-700">
+              Reload Application
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (error) {
     let errorMessage = "Something went wrong.";

@@ -1,12 +1,13 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import { SchemaConfig } from '@/src/types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 export async function parseSchema(input: string, type: 'sql' | 'django' | 'json'): Promise<SchemaConfig> {
-  if (!process.env.GEMINI_API_KEY) {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY ?? process.env.GEMINI_API_KEY;
+  if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not configured in the environment.');
   }
+
+  const { GoogleGenAI, Type } = await import('@google/genai');
+  const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `
     Parse the following ${type} input and return a normalized SchemaConfig JSON.
