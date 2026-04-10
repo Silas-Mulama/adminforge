@@ -476,9 +476,6 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
             <span className="font-bold text-xl tracking-tight">AdminForge</span>
           </div>
           <div className="flex items-center gap-4">
-            {/* <Button onClick={() => setIsAuthModalOpen(true)} variant="outline" className="border-zinc-700 hover:bg-zinc-800">
-              Sign In
-            </Button> */}
             <Button onClick={() => setIsAuthModalOpen(true)} className="bg-orange-600 hover:bg-orange-700">
               Get Started
             </Button>
@@ -510,9 +507,6 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
               <Button size="lg" onClick={() => setIsAuthModalOpen(true)} className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-md shadow-lg hover:shadow-xl transition-transform transform-gpu hover:-translate-y-0.5">
                 Get Started Free
               </Button>
-              {/* <Button size="lg" variant="outline" className="border-zinc-700 hover:bg-zinc-800 px-6 py-3 rounded-md shadow-sm hover:shadow-md transition-transform transform-gpu hover:-translate-y-0.5">
-                View Demo
-              </Button> */}
             </div>
           </motion.div>
 
