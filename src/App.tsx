@@ -466,19 +466,32 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
     try {
       const config = await parseSchema(rawInput, inputType);
       const dashboardConfig = generateDashboardConfig(config);
-      
-      const { error } = await supabase
-        .from('projects')
-        .insert({
-          workspace_id: activeWorkspace.id,
-          name: newDashboardName.trim() || `Project ${projects.length + 1}`,
-          description: `Generated from ${inputType.toUpperCase()} schema`,
-          inputType,
-          created_by: user.id,
-          config: { ...config, dashboardConfig } // Merging for simplicity in this demo
-        });
 
-      if (error) throw error;
+      const insertObj: any = {
+        workspace_id: activeWorkspace.id,
+        name: newDashboardName.trim() || `Project ${projects.length + 1}`,
+        description: `Generated from ${inputType.toUpperCase()} schema`,
+        inputType,
+        created_by: user.id,
+        config: { ...config, dashboardConfig } // Merging for simplicity in this demo
+      };
+
+      // Try inserting with `inputType` first. If the projects table doesn't have that column
+      // (some users' DBs), retry without it and notify the user.
+      let insertResult = await supabase.from('projects').insert(insertObj);
+      if (insertResult.error) {
+        const msg = insertResult.error.message || String(insertResult.error);
+        if (msg.includes("'inputType'") || msg.includes('inputType')) {
+          // Retry without inputType
+          const fallback = { ...insertObj };
+          delete fallback.inputType;
+          const retryResult = await supabase.from('projects').insert(fallback);
+          if (retryResult.error) throw retryResult.error;
+          toast.warning('Dashboard generated; `inputType` was not saved because your database schema is missing that column. Consider adding an `inputType` column to `projects`.');
+        } else {
+          throw insertResult.error;
+        }
+      }
       
       toast.success('Dashboard generated!');
       setRawInput('');
