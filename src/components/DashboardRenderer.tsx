@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { exportProject } from '@/src/lib/export';
 import { 
   Table, 
   TableBody, 
@@ -111,6 +112,7 @@ export function DashboardRenderer({ workspaceId, schema, onBack }: DashboardRend
   const [settingsName, setSettingsName] = useState(schema.name);
   const [settingsDescription, setSettingsDescription] = useState(schema.description || '');
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     setSettingsName(schema.name);
@@ -338,6 +340,26 @@ export function DashboardRenderer({ workspaceId, schema, onBack }: DashboardRend
               Managing <span className="text-zinc-300 font-medium">{activeModel}</span>
             </p>
           </div>
+        </div>
+        <div className="flex items-center gap-3 justify-end lg:justify-start lg:flex-1 min-w-0 max-w-full lg:max-w-[60%]">
+          <Button
+            onClick={async () => {
+              setIsExporting(true);
+              try {
+                await exportProject(schema.id, schema.name);
+                toast.success('Export completed');
+              } catch (error: any) {
+                console.error(error);
+                toast.error(error?.message || 'Export failed');
+              } finally {
+                setIsExporting(false);
+              }
+            }}
+            disabled={isExporting}
+            className="bg-zinc-900 hover:bg-zinc-800 h-11 px-4 text-sm"
+          >
+            {isExporting ? 'Exporting...' : 'Export JSON'}
+          </Button>
         </div>
         <div className="flex-1 min-w-0 max-w-full lg:max-w-[60%]">
           <ScrollArea className="w-full">
