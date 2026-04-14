@@ -162,6 +162,66 @@ export async function generateSchemaFromDescription(description: string, style: 
   }
 }
 
+export async function improveSchemaWithAi(input: string, style: 'sql' | 'django' | 'json'): Promise<string> {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY ?? process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured in the environment.');
+  }
+
+  const { GoogleGenAI, Type } = await import('@google/genai');
+  const ai = new GoogleGenAI({ apiKey });
+
+  let prompt = '';
+
+  if (style === 'sql') {
+    prompt = `
+      Review and improve the following SQL schema.
+      Preserve the existing table and column intent, fix syntax issues, and output only valid PostgreSQL CREATE TABLE statements.
+      Do not include any explanation or markdown formatting.
+
+      Input SQL:
+      ${input}
+    `;
+  } else if (style === 'django') {
+    prompt = `
+      Review and improve the following Django model definitions.
+      Preserve the existing model and field intent, fix syntax issues, and output only valid Python/Django model code.
+      Do not include any explanation or markdown formatting.
+
+      Input Django models:
+      ${input}
+    `;
+  } else {
+    prompt = `
+      Review and improve the following JSON schema.
+      Preserve the structure and semantics, fix any formatting or field issues, and output only valid JSON.
+      Do not include any explanation or markdown formatting.
+
+      Input JSON schema:
+      ${input}
+    `;
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        responseMimeType: "text/plain"
+      }
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from AI model');
+    }
+
+    return response.text.trim();
+  } catch (error: any) {
+    console.error('AI Review Error:', error);
+    throw new Error(`AI schema review failed: ${error.message || 'Unknown error'}`);
+  }
+}
+
 export function generateDashboardConfig(schema: SchemaConfig) {
   const config: any = { models: {} };
   

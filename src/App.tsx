@@ -59,7 +59,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Toaster, toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
-import { parseSchema, generateDashboardConfig, generateSchemaFromDescription, validateSchemaConfig } from '@/src/lib/schema-engine';
+import { parseSchema, generateDashboardConfig, generateSchemaFromDescription, improveSchemaWithAi, validateSchemaConfig } from '@/src/lib/schema-engine';
 import { SchemaConfig } from '@/src/types';
 import { DashboardRenderer } from './components/DashboardRenderer';
 import { AuthForm } from './components/AuthForm';
@@ -211,6 +211,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
   const [generatedConfig, setGeneratedConfig] = useState<SchemaConfig | null>(null);
   const [generatedSchemaError, setGeneratedSchemaError] = useState<string | null>(null);
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [isReviewing, setIsReviewing] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -565,6 +566,29 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
       toast.error('AI schema generation failed. Please try again.');
     } finally {
       setAiGenerating(false);
+    }
+  };
+
+  const handleReviewSchemaWithAi = async () => {
+    if (!rawInput.trim()) {
+      toast.error('Please paste your schema first before asking for AI suggestions.');
+      return;
+    }
+
+    setGeneratedSchemaError(null);
+    setGeneratedConfig(null);
+    setIsReviewing(true);
+
+    try {
+      const review = await improveSchemaWithAi(rawInput, inputFormat);
+      setGeneratedSchema(review);
+      toast.success('AI suggestions are ready. Review them on the right and apply if desired.');
+    } catch (error: any) {
+      console.error('AI Review Error:', error);
+      setGeneratedSchemaError(error?.message || 'Failed to review schema using AI.');
+      toast.error('AI review failed. Please try again.');
+    } finally {
+      setIsReviewing(false);
     }
   };
 
@@ -1062,15 +1086,16 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
 
                         </>
                       ) : (
-                        <div className="space-y-2">
-                          <Label>Raw Schema Content</Label>
-                          <div className="rounded-2xl border border-zinc-800 bg-zinc-950">
-                            <Editor
-                              value={rawInput}
-                              onValueChange={(value) => setRawInput(value)}
-                              highlight={(code) => highlightCode(code, inputFormat)}
-                              padding={16}
-                              textareaId="raw-schema-editor"
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Raw Schema Content</Label>
+                            <div className="rounded-2xl border border-zinc-800 bg-zinc-950">
+                              <Editor
+                                value={rawInput}
+                                onValueChange={(value) => setRawInput(value)}
+                                highlight={(code) => highlightCode(code, inputFormat)}
+                                padding={16}
+                                textareaId="raw-schema-editor"
 placeholder={
   inputFormat === 'sql'
     ? `CREATE TABLE products (
@@ -1091,18 +1116,40 @@ placeholder={
   ]
 }`
 }
-                              className="min-h-[24rem] w-full rounded-2xl bg-transparent font-mono text-sm text-zinc-100 focus:outline-none"
-                              style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
-                            />
+                                className="min-h-[24rem] w-full rounded-2xl bg-transparent font-mono text-sm text-zinc-100 focus:outline-none"
+                                style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
+                              />
+                            </div>
                           </div>
+
+                          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                            <Button
+                              onClick={handleReviewSchemaWithAi}
+                              disabled={!rawInput.trim() || isReviewing}
+                              className="w-full sm:w-auto bg-zinc-800 hover:bg-zinc-700"
+                            >
+                              {isReviewing ? 'Reviewing with AI...' : 'Review with AI'}
+                            </Button>
+                            <span className="text-zinc-400 text-sm sm:max-w-xl">
+                              Generate AI suggestions for your current manual schema. Apply the suggestion if you want improved syntax, or continue with the original schema as-is.
+                            </span>
+                          </div>
+
+                          {generatedSchemaError && (
+                            <p className="text-sm text-red-400">{generatedSchemaError}</p>
+                          )}
                         </div>
                       )}
                         </div>
                         <div className="space-y-4">
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                             <div>
-                              <Label className="mb-1">Generated Schema</Label>
-                              <p className="text-sm text-zinc-500">Review and edit the schema output.</p>
+                              <Label className="mb-1">{inputMode === 'manual' ? 'AI Suggestions' : 'Generated Schema'}</Label>
+                              <p className="text-sm text-zinc-500">
+                                {inputMode === 'manual'
+                                  ? 'Review AI suggestions for your current schema here. Apply them if you want improved syntax, or continue with your original input.'
+                                  : 'Review and edit the generated schema output.'}
+                              </p>
                             </div>
                             {inputMode === 'ai' && generatedSchema && (
                               <span className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-xs text-zinc-400">AI Assist Preview</span>
@@ -1119,11 +1166,28 @@ placeholder={
                               highlight={(code) => highlightCode(code, inputFormat)}
                               padding={16}
                               textareaId="generated-schema-editor"
-                              placeholder="Generated schema will appear here... (You can edit it once generated)"
+                              placeholder={inputMode === 'manual'
+                                ? 'AI suggestions will appear here after review. You can edit them or apply the suggestion back to your raw schema.'
+                                : 'Generated schema will appear here... (You can edit it once generated)'
+                              }
                               className="min-h-[24rem] w-full rounded-2xl bg-transparent font-mono text-sm text-zinc-100 focus:outline-none"
                               style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
                             />
                           </div>
+
+                          {inputMode === 'manual' && generatedSchema && generatedSchema.trim() !== rawInput.trim() && (
+                            <div className="flex justify-end">
+                              <Button
+                                onClick={() => {
+                                  setRawInput(generatedSchema);
+                                  toast.success('AI suggestion applied to the raw schema editor.');
+                                }}
+                                className="bg-zinc-800 hover:bg-zinc-700 text-sm rounded-full px-4 py-2"
+                              >
+                                Use AI suggestion
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
 
