@@ -158,7 +158,11 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
       const matchingProject = projects.find((project) => String(project.id) === projectRouteId);
       if (matchingProject) {
         setSelectedProject(matchingProject);
+      } else {
+        setSelectedProject(null);
       }
+    } else if (!location.pathname.startsWith('/builder')) {
+      setSelectedProject(null);
     }
   }, [location.pathname, navigate, user, workspaces, projects]);
 
@@ -659,12 +663,17 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
         }
       }
 
-      const generatedProjectId = insertResult.data?.id;
+      const insertedProject = insertResult.data;
+      const generatedProjectId = insertedProject?.id;
       toast.success('Dashboard generated!');
       setRawInput('');
       setAiPrompt('');
       setGeneratedSchema('');
       setNewDashboardName('');
+      if (insertedProject) {
+        setProjects((prev) => [insertedProject, ...prev.filter((p: any) => p.id !== insertedProject.id)]);
+        setSelectedProject(insertedProject);
+      }
       setView('dashboard');
       fetchProjects();
       if (generatedProjectId) {
