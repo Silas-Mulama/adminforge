@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Database, 
@@ -15,6 +15,7 @@ import {
   Pencil,
   Menu
 } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase, hasSupabaseCredentials } from '@/src/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -113,18 +114,61 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [profileName, setProfileName] = useState('');
 
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const workspaceMatch = location.pathname.match(/^\/workspace\/([^/]+)/);
+    const workspaceRouteId = workspaceMatch?.[1];
+
+    if (!user) {
+      setView('landing');
+      return;
+    }
+
+    if (location.pathname === '/') {
+      navigate('/dashboard', { replace: true });
+      return;
+    }
+
+    if (location.pathname.startsWith('/builder')) {
+      setView('builder');
+    } else if (location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/workspace/')) {
+      setView('dashboard');
+    } else {
+      setView('dashboard');
+    }
+
+    if (workspaceRouteId && workspaces.length > 0) {
+      const matchingWorkspace = workspaces.find((ws) => String(ws.id) === workspaceRouteId);
+      if (matchingWorkspace) {
+        setActiveWorkspace(matchingWorkspace);
+      }
+    }
+  }, [location.pathname, navigate, user, workspaces]);
+
+  useEffect(() => {
+    const workspaceMatch = location.pathname.match(/^\/workspace\/([^/]+)/);
+    const workspaceRouteId = workspaceMatch?.[1];
+    if (!workspaceRouteId || workspaces.length === 0) return;
+
+    const matchingWorkspace = workspaces.find((ws) => String(ws.id) === workspaceRouteId);
+    if (matchingWorkspace) {
+      setActiveWorkspace(matchingWorkspace);
+    }
+  }, [location.pathname, workspaces]);
+
   useEffect(() => {
     // Handle Supabase OAuth redirect (access token in URL hash)
     async function handleOAuthRedirect() {
       try {
-        if (!supabase) return;
         const hash = window.location.hash || '';
         if (hash.includes('access_token') || hash.includes('provider_token') || hash.includes('refresh_token')) {
-          const { data, error } = await supabase.auth.getSessionFromUrl();
+          const { data, error } = await supabase.auth.getSession();
           if (error) {
             console.error('Error parsing OAuth redirect:', error);
             toast.error('Authentication failed during redirect');
-          } else {
+          } else if (data?.session) {
             toast.success('Signed in successfully');
           }
           // Remove tokens from URL for cleanliness
@@ -181,9 +225,10 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       console.log('Sign out successful');
-      // Force view change just in case listener is slow
+      // Force view change and route reset
       setUser(null);
       setView('landing');
+      navigate('/', { replace: true });
       toast.success('Signed out successfully');
     } catch (error: any) {
       console.error('Sign out error:', error);
@@ -301,7 +346,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
               <div key={ws.id} className="group relative">
                 <button
                   onClick={() => {
-                    setActiveWorkspace(ws);
+                    navigate(`/workspace/${ws.id}`);
                     setIsMobileSidebarOpen(false);
                   }}
                   className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all flex items-center gap-2 ${
@@ -350,7 +395,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
           </div>
           <button 
             onClick={() => {
-              setView('dashboard');
+              navigate('/dashboard');
               setIsMobileSidebarOpen(false);
             }}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${view === 'dashboard' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50'}`}
@@ -360,7 +405,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
           </button>
           <button 
             onClick={() => {
-              setView('builder');
+              navigate('/builder');
               setIsMobileSidebarOpen(false);
             }}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${view === 'builder' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50'}`}
@@ -621,7 +666,10 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
               {workspaces.map(ws => (
                 <div key={ws.id} className="group relative">
                   <button
-                    onClick={() => setActiveWorkspace(ws)}
+                    onClick={() => {
+                      navigate(`/workspace/${ws.id}`);
+                      setIsMobileSidebarOpen(false);
+                    }}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all flex items-center gap-2 ${
                       activeWorkspace?.id === ws.id ? 'bg-orange-600/10 text-orange-500' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
                     }`}
@@ -667,14 +715,18 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
               <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Main</span>
             </div>
             <button 
-              onClick={() => setView('dashboard')}
+              onClick={() => {
+                navigate('/dashboard');
+              }}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${view === 'dashboard' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50'}`}
             >
               <LayoutDashboard className="w-4 h-4" />
               Dashboards
             </button>
             <button 
-              onClick={() => setView('builder')}
+              onClick={() => {
+                navigate('/builder');
+              }}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${view === 'builder' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50'}`}
             >
               <Plus className="w-4 h-4" />
@@ -754,7 +806,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                       </div>
                       <h3 className="text-xl font-medium mb-2">No dashboards yet</h3>
                       <p className="text-zinc-500 mb-6">Start by generating a dashboard from your schema.</p>
-                      <Button onClick={() => setView('builder')} className="bg-orange-600 hover:bg-orange-700">
+                      <Button onClick={() => navigate('/builder')} className="bg-orange-600 hover:bg-orange-700">
                         Create Your First Dashboard
                       </Button>
                     </div>

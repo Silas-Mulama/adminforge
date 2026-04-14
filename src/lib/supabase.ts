@@ -8,6 +8,4 @@ if (!hasSupabaseCredentials) {
   console.warn('Supabase credentials missing. Please check your .env file.');
 }
 
-export const supabase = hasSupabaseCredentials
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : undefined;
+export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '');

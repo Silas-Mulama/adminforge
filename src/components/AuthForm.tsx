@@ -152,7 +152,7 @@ export function AuthForm() {
 
                 <motion.div variants={itemVariants} className="space-y-2">
                   <div className="flex items-center justify-between ml-1">
-                    <Label htmlFor="password" text-xs font-semibold text-zinc-500 uppercase tracking-wider>Password</Label>
+                    <Label htmlFor="password" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Password</Label>
                     <button type="button" className="text-[10px] font-bold text-orange-500 hover:text-orange-400 uppercase tracking-widest transition-colors">
                       Forgot?
                     </button>
