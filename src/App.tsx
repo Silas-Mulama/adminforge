@@ -973,34 +973,32 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                         </div>
                       </div>
 
-                      {inputMode === 'manual' && (
-                        <div className="space-y-2">
-                          <Label>Input Format</Label>
-                          <div className="grid grid-cols-3 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setInputFormat('sql')}
-                              className={`rounded-2xl border px-3 py-2 text-sm font-medium transition ${inputFormat === 'sql' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
-                            >
-                              SQL CREATE
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setInputFormat('django')}
-                              className={`rounded-2xl border px-3 py-2 text-sm font-medium transition ${inputFormat === 'django' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
-                            >
-                              Django Models
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setInputFormat('json')}
-                              className={`rounded-2xl border px-3 py-2 text-sm font-medium transition ${inputFormat === 'json' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
-                            >
-                              JSON Schema
-                            </button>
-                          </div>
+                      <div className="space-y-2">
+                        <Label>Input Format</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setInputFormat('sql')}
+                            className={`rounded-2xl border px-3 py-2 text-sm font-medium transition ${inputFormat === 'sql' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
+                          >
+                            SQL CREATE
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setInputFormat('django')}
+                            className={`rounded-2xl border px-3 py-2 text-sm font-medium transition ${inputFormat === 'django' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
+                          >
+                            Django Models
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setInputFormat('json')}
+                            className={`rounded-2xl border px-3 py-2 text-sm font-medium transition ${inputFormat === 'json' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
+                          >
+                            JSON Schema
+                          </button>
                         </div>
-                      )}
+                      </div>
 
                       {inputMode === 'ai' ? (
                         <>
@@ -1080,7 +1078,7 @@ placeholder={
                             )}
                           </div>
 
-                          <div className="rounded-2xl border border-zinc-800 bg-zinc-950">
+                          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 max-h-[24rem] overflow-auto">
                             <Editor
                               value={generatedSchema}
                               onValueChange={(value) => {
