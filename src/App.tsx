@@ -566,9 +566,10 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
       setGeneratedConfig(config);
       toast.success('AI generated a schema. Review it below and then create the dashboard.');
     } catch (error: any) {
+      const message = error?.message || 'Failed to generate schema using AI.';
       console.error('AI Schema Generation Error:', error);
-      setGeneratedSchemaError(error?.message || 'Failed to generate schema using AI.');
-      toast.error('AI schema generation failed. Please try again.');
+      setGeneratedSchemaError(message);
+      toast.error(message);
     } finally {
       setAiGenerating(false);
     }
@@ -591,9 +592,10 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
       setGeneratedSchemaReason(review.reason);
       toast.success('AI suggestions are ready. Review them on the right and apply if desired.');
     } catch (error: any) {
+      const message = error?.message || 'Failed to review schema using AI.';
       console.error('AI Review Error:', error);
-      setGeneratedSchemaError(error?.message || 'Failed to review schema using AI.');
-      toast.error('AI review failed. Please try again.');
+      setGeneratedSchemaError(message);
+      toast.error(message);
     } finally {
       setIsReviewing(false);
     }

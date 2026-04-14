@@ -83,8 +83,35 @@ export async function parseSchema(input: string, type: 'sql' | 'django' | 'json'
     return JSON.parse(response.text) as SchemaConfig;
   } catch (error: any) {
     console.error('AI Parse Error:', error);
-    throw new Error(`AI Schema Parsing failed: ${error.message || 'Unknown error'}`);
+    throw new Error(normalizeAiError(error));
   }
+}
+
+function normalizeAiError(error: any): string {
+  const message = error?.message || String(error || 'Unknown AI error');
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes('quota') ||
+    normalized.includes('quota exceeded') ||
+    normalized.includes('insufficient quota') ||
+    normalized.includes('billing') ||
+    normalized.includes('rate limit') ||
+    normalized.includes('limit exceeded')
+  ) {
+    return 'AI features are undergoing maintenance. Please try again later.';
+  }
+
+  if (
+    normalized.includes('maintenance') ||
+    normalized.includes('service unavailable') ||
+    normalized.includes('temporarily unavailable') ||
+    normalized.includes('unavailable')
+  ) {
+    return 'AI features are undergoing maintenance. Please try again later.';
+  }
+
+  return message;
 }
 
 export function validateSchemaConfig(schema: any): schema is SchemaConfig {
@@ -158,7 +185,7 @@ export async function generateSchemaFromDescription(description: string, style: 
     return response.text.trim();
   } catch (error: any) {
     console.error('AI Generation Error:', error);
-    throw new Error(`AI schema generation failed: ${error.message || 'Unknown error'}`);
+    throw new Error(normalizeAiError(error));
   }
 }
 
@@ -232,7 +259,7 @@ export async function reviewSchemaWithAi(input: string, style: 'sql' | 'django' 
     return JSON.parse(response.text) as { review: string; reason: string };
   } catch (error: any) {
     console.error('AI Review Error:', error);
-    throw new Error(`AI schema review failed: ${error.message || 'Unknown error'}`);
+    throw new Error(normalizeAiError(error));
   }
 }
 
