@@ -71,18 +71,34 @@ export async function exportProject(projectId, projectName) {
     throw new Error('Project workspace not found.');
   }
 
-  const { data: membership, error: membershipError } = await supabase
-    .from('memberships')
-    .select('id')
-    .eq('workspace_id', workspaceId)
-    .eq('user_id', user.id)
-    .single();
+  let authorized = false;
 
-  if (membershipError) {
-    throw new Error('Authorization check failed.');
+  if (project.created_by === user.id || project.owner_id === user.id || project.user_id === user.id) {
+    authorized = true;
   }
 
-  if (!membership) {
+  if (!authorized) {
+    const { data: membership, error: membershipError } = await supabase
+      .from('memberships')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (membershipError) {
+      const errorMessage = membershipError.message || JSON.stringify(membershipError);
+      if (errorMessage.toLowerCase().includes('relation "memberships" does not exist') || errorMessage.includes('42P01')) {
+        // Memberships table is not present; fallback to project ownership/creator check.
+        authorized = false;
+      } else {
+        throw new Error(`Authorization check failed: ${errorMessage}`);
+      }
+    } else if (membership) {
+      authorized = true;
+    }
+  }
+
+  if (!authorized) {
     throw new Error('You are not authorized to export this project.');
   }
 
