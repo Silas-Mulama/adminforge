@@ -120,11 +120,24 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
+  }
+
   body {
     @apply bg-background text-foreground;
-    }
+  }
+
   html {
     @apply font-sans;
-    }
+  }
+
+  button,
+  button[data-slot="button"] {
+    background-color: #f97316 !important;
+    color: #000 !important;
+  }
+
+  button:hover,
+  button[data-slot="button"]:hover {
+    background-color: #ea580c !important;
+  }
 }

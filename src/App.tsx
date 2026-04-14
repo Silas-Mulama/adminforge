@@ -1360,7 +1360,7 @@ export default function App() {
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
         <Card className="max-w-md w-full bg-zinc-900 border-zinc-800 text-white">
           <CardHeader>
-            <CardTitle className="text-red-500">Application Error</CardTitle>
+            <CardTitle className="text-red-500">Connection Error</CardTitle>
             <CardDescription className="text-zinc-400">
               {errorMessage}
             </CardDescription>
