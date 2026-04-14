@@ -126,7 +126,9 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
 
   useEffect(() => {
     const workspaceMatch = location.pathname.match(/^\/workspace\/([^/]+)/);
+    const projectMatch = location.pathname.match(/^\/project\/([^/]+)/);
     const workspaceRouteId = workspaceMatch?.[1];
+    const projectRouteId = projectMatch?.[1];
 
     if (!user) {
       setView('landing');
@@ -140,8 +142,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
 
     if (location.pathname.startsWith('/builder')) {
       setView('builder');
-    } else if (location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/workspace/')) {
-      setView('dashboard');
+      setSelectedProject(null);
     } else {
       setView('dashboard');
     }
@@ -152,7 +153,14 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
         setActiveWorkspace(matchingWorkspace);
       }
     }
-  }, [location.pathname, navigate, user, workspaces]);
+
+    if (projectRouteId && projects.length > 0) {
+      const matchingProject = projects.find((project) => String(project.id) === projectRouteId);
+      if (matchingProject) {
+        setSelectedProject(matchingProject);
+      }
+    }
+  }, [location.pathname, navigate, user, workspaces, projects]);
 
   useEffect(() => {
     const workspaceMatch = location.pathname.match(/^\/workspace\/([^/]+)/);
@@ -307,6 +315,10 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
       toast.success('Workspace created');
       setNewWorkspaceName('');
       setIsCreatingWorkspace(false);
+      if (data) {
+        setActiveWorkspace(data);
+        navigate(`/workspace/${data.id}`);
+      }
       fetchWorkspaces();
     } catch (error) {
       handleDatabaseError(error, OperationType.CREATE, 'workspaces', user, onError);
@@ -486,8 +498,15 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
       if (error) throw error;
       
       toast.success('Workspace deleted');
+      const nextWorkspace = workspaces.find((ws) => ws.id !== workspaceToDelete.id);
       if (activeWorkspace?.id === workspaceToDelete.id) {
         setActiveWorkspace(null);
+        if (nextWorkspace) {
+          setActiveWorkspace(nextWorkspace);
+          navigate(`/workspace/${nextWorkspace.id}`);
+        } else {
+          navigate('/dashboard');
+        }
       }
       setWorkspaceToDelete(null);
       fetchWorkspaces();
@@ -598,20 +617,22 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
         config: { ...config, dashboardConfig }
       };
 
-      let insertResult = await supabase.from('projects').insert(insertObj);
+      const insertProject = async (payload: any) => supabase.from('projects').insert(payload).select().single();
+      let insertResult: any = await insertProject(insertObj);
       if (insertResult.error) {
         const msg = insertResult.error.message || String(insertResult.error);
         if (msg.includes("'inputType'") || msg.includes('inputType')) {
           const fallback = { ...insertObj };
           delete fallback.inputType;
-          const retryResult = await supabase.from('projects').insert(fallback);
-          if (retryResult.error) throw retryResult.error;
+          insertResult = await insertProject(fallback);
+          if (insertResult.error) throw insertResult.error;
           toast.warning('Dashboard generated; `inputType` was not saved because your database schema is missing that column. Consider adding an `inputType` column to `projects`.');
         } else {
           throw insertResult.error;
         }
       }
-      
+
+      const generatedProjectId = insertResult.data?.id;
       toast.success('Dashboard generated!');
       setRawInput('');
       setAiPrompt('');
@@ -619,6 +640,9 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
       setNewDashboardName('');
       setView('dashboard');
       fetchProjects();
+      if (generatedProjectId) {
+        navigate(`/project/${generatedProjectId}`);
+      }
     } catch (error: any) {
       handleDatabaseError(error, OperationType.CREATE, 'projects', user, onError);
     } finally {
@@ -867,6 +891,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                     onBack={() => {
                       setSelectedProject(null);
                       fetchProjects();
+                      navigate('/dashboard');
                     }} 
                   />
                 </motion.div>
@@ -894,7 +919,10 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                       {projects.map(s => (
                         <Card 
                           key={s.id} 
-                          onClick={() => setSelectedProject(s)}
+                          onClick={() => {
+                            setSelectedProject(s);
+                            navigate(`/project/${s.id}`);
+                          }}
                           className="bg-zinc-900/50 border-zinc-800/50 hover:border-orange-500/50 transition-all group cursor-pointer"
                         >
                           <CardHeader>
