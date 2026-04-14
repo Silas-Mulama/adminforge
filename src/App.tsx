@@ -13,7 +13,9 @@ import {
   MoreVertical,
   Trash2,
   Pencil,
-  Menu
+  Menu,
+  Sparkles,
+  ClipboardList
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase, hasSupabaseCredentials } from '@/src/lib/supabase';
@@ -24,6 +26,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import Editor from 'react-simple-code-editor';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-sql';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-json';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -189,8 +196,8 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
   // Schema Builder State
   const [rawInput, setRawInput] = useState('');
   const [newDashboardName, setNewDashboardName] = useState('');
-  const [inputType, setInputType] = useState<'sql' | 'django' | 'json'>('sql');
-  const [builderMode, setBuilderMode] = useState<'manual' | 'ai'>('manual');
+  const [inputFormat, setInputFormat] = useState<'sql' | 'django' | 'json'>('sql');
+  const [inputMode, setInputMode] = useState<'manual' | 'ai'>('manual');
   const [aiPrompt, setAiPrompt] = useState('');
   const [generatedSchema, setGeneratedSchema] = useState('');
   const [generatedConfig, setGeneratedConfig] = useState<SchemaConfig | null>(null);
@@ -503,6 +510,16 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
     }
   };
 
+  const languageForFormat = (format: 'sql' | 'django' | 'json') => {
+    return format === 'django' ? 'python' : format;
+  };
+
+  const highlightCode = (code: string, format: 'sql' | 'django' | 'json') => {
+    const language = languageForFormat(format);
+    const grammar = Prism.languages[language] || Prism.languages.sql;
+    return Prism.highlight(code, grammar, language);
+  };
+
   const handleGenerateAiSchema = async () => {
     if (!aiPrompt.trim()) {
       toast.error('Please describe the schema you want to generate');
@@ -514,8 +531,8 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
     setAiGenerating(true);
 
     try {
-      const generatedSource = await generateSchemaFromDescription(aiPrompt.trim(), inputType);
-      const config = await parseSchema(generatedSource, inputType);
+      const generatedSource = await generateSchemaFromDescription(aiPrompt.trim(), inputFormat);
+      const config = await parseSchema(generatedSource, inputFormat);
       if (!validateSchemaConfig(config)) {
         throw new Error('AI returned an invalid schema structure.');
       }
@@ -543,7 +560,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
       let config: SchemaConfig;
       let sourceDescription = '';
 
-      if (builderMode === 'ai') {
+      if (inputMode === 'ai') {
         if (!generatedSchema) {
           toast.error('Please generate a schema first using AI Assist');
           return;
@@ -552,22 +569,22 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
         if (generatedConfig) {
           config = generatedConfig;
         } else {
-          config = await parseSchema(generatedSchema, inputType);
+          config = await parseSchema(generatedSchema, inputFormat);
           if (!validateSchemaConfig(config)) {
             toast.error('Generated schema is not valid. Please review the output.');
             return;
           }
         }
 
-        sourceDescription = `Generated from AI Assist (${inputType.toUpperCase()})`;
+        sourceDescription = `Generated from AI Assist (${inputFormat.toUpperCase()})`;
       } else {
         if (!rawInput) {
           toast.error('Please enter a schema');
           return;
         }
 
-        config = await parseSchema(rawInput, inputType);
-        sourceDescription = `Generated from ${inputType.toUpperCase()} schema`;
+        config = await parseSchema(rawInput, inputFormat);
+        sourceDescription = `Generated from ${inputFormat.toUpperCase()} schema`;
       }
 
       const dashboardConfig = generateDashboardConfig(config);
@@ -576,7 +593,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
         workspace_id: activeWorkspace.id,
         name: newDashboardName.trim() || `Project ${projects.length + 1}`,
         description: sourceDescription,
-        inputType: builderMode === 'ai' ? `ai-${inputType}` : inputType,
+        inputType: inputMode === 'ai' ? `ai-${inputFormat}` : inputFormat,
         created_by: user.id,
         config: { ...config, dashboardConfig }
       };
@@ -908,16 +925,18 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="max-w-3xl mx-auto"
+                  className="max-w-5xl mx-auto"
                 >
-                  <Card className="bg-zinc-900/50 border-zinc-800/50">
+                  <Card className="bg-zinc-900/80 border border-zinc-800">
                     <CardHeader>
                       <CardTitle>Schema Importer</CardTitle>
                       <CardDescription>Paste your database schema or Django models to generate a dashboard.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      <div className="space-y-2">
-                        <Label>Dashboard Name</Label>
+                      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+                        <div className="space-y-6">
+                          <div className="space-y-2">
+                            <Label>Dashboard Name</Label>
                         <Input 
                           value={newDashboardName}
                           onChange={(e) => setNewDashboardName(e.target.value)}
@@ -928,28 +947,62 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
 
                       <div className="space-y-2">
                         <Label>Input Mode</Label>
-                        <Tabs value={builderMode} onValueChange={(v: any) => setBuilderMode(v)} className="w-full">
-                          <TabsList className="grid w-full grid-cols-2 bg-zinc-950 border border-zinc-800">
-                            <TabsTrigger value="manual" className="text-zinc-400 data-[state=active]:text-white data-[state=active]:bg-zinc-800">Manual Paste</TabsTrigger>
-                            <TabsTrigger value="ai" className="text-zinc-400 data-[state=active]:text-white data-[state=active]:bg-zinc-800">AI Assist</TabsTrigger>
-                          </TabsList>
-                        </Tabs>
+                        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-1">
+                          <button
+                            type="button"
+                            onClick={() => setInputMode('manual')}
+                            className={`flex items-start gap-3 rounded-xl px-4 py-4 text-left transition ${inputMode === 'manual' ? 'bg-zinc-800 text-white shadow-sm shadow-zinc-950/20' : 'bg-transparent text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100'}`}
+                          >
+                            <ClipboardList className="w-5 h-5" />
+                            <div>
+                              <p className="font-medium">Manual Paste</p>
+                              <p className="text-xs text-zinc-500">Edit schema directly</p>
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setInputMode('ai')}
+                            className={`flex items-start gap-3 rounded-xl px-4 py-4 text-left transition ${inputMode === 'ai' ? 'bg-zinc-800 text-white shadow-sm shadow-zinc-950/20' : 'bg-transparent text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100'}`}
+                          >
+                            <Sparkles className="w-5 h-5" />
+                            <div>
+                              <p className="font-medium">AI Assist</p>
+                              <p className="text-xs text-zinc-500">Describe your schema and get suggestions</p>
+                            </div>
+                          </button>
+                        </div>
                       </div>
 
-                      {builderMode === 'manual' && (
+                      {inputMode === 'manual' && (
                         <div className="space-y-2">
                           <Label>Input Format</Label>
-                          <Tabs value={inputType} onValueChange={(v: any) => setInputType(v)} className="w-full">
-                            <TabsList className="grid w-full grid-cols-3 bg-zinc-950 border border-zinc-800">
-                              <TabsTrigger value="sql" className="text-zinc-400 data-[state=active]:text-white data-[state=active]:bg-zinc-800">SQL CREATE</TabsTrigger>
-                              <TabsTrigger value="django" className="text-zinc-400 data-[state=active]:text-white data-[state=active]:bg-zinc-800">Django Models</TabsTrigger>
-                              <TabsTrigger value="json" className="text-zinc-400 data-[state=active]:text-white data-[state=active]:bg-zinc-800">JSON Schema</TabsTrigger>
-                            </TabsList>
-                          </Tabs>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setInputFormat('sql')}
+                              className={`rounded-2xl border px-3 py-2 text-sm font-medium transition ${inputFormat === 'sql' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
+                            >
+                              SQL CREATE
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setInputFormat('django')}
+                              className={`rounded-2xl border px-3 py-2 text-sm font-medium transition ${inputFormat === 'django' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
+                            >
+                              Django Models
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setInputFormat('json')}
+                              className={`rounded-2xl border px-3 py-2 text-sm font-medium transition ${inputFormat === 'json' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
+                            >
+                              JSON Schema
+                            </button>
+                          </div>
                         </div>
                       )}
 
-                      {builderMode === 'ai' ? (
+                      {inputMode === 'ai' ? (
                         <>
                           <div className="space-y-2">
                             <Label>Describe your schema</Label>
@@ -978,43 +1031,77 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                             <p className="text-sm text-red-400">{generatedSchemaError}</p>
                           )}
 
-                          <div className="space-y-2">
-                            <Label>Generated Schema (editable)</Label>
-                            <div className="relative">
-                              <textarea
-                                value={generatedSchema}
-                                onChange={(e) => {
-                                  setGeneratedSchema(e.target.value);
-                                  setGeneratedConfig(null);
-                                }}
-                                placeholder="Generated schema will appear here..."
-                                className="w-full h-64 bg-zinc-950 border border-zinc-800 rounded-md p-4 font-mono text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500/50 resize-none"
-                              />
-                            </div>
-                          </div>
                         </>
                       ) : (
                         <div className="space-y-2">
                           <Label>Raw Schema Content</Label>
-                          <div className="relative">
-                            <textarea
+                          <div className="rounded-2xl border border-zinc-800 bg-zinc-950">
+                            <Editor
                               value={rawInput}
-                              onChange={(e) => setRawInput(e.target.value)}
-                              placeholder={
-                                inputType === 'sql' ? 'CREATE TABLE products (\n  id INT PRIMARY KEY,\n  name VARCHAR(255)...\n);' :
-                                inputType === 'django' ? 'class Product(models.Model):\n    name = models.CharField(max_length=255)...' :
-                                '{\n  "models": [\n    {\n      "name": "Product",\n      "fields": [...]\n    }\n  ]\n}'
-                              }
-                              className="w-full h-64 bg-zinc-950 border border-zinc-800 rounded-md p-4 font-mono text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500/50 resize-none"
+                              onValueChange={(value) => setRawInput(value)}
+                              highlight={(code) => highlightCode(code, inputFormat)}
+                              padding={16}
+                              textareaId="raw-schema-editor"
+placeholder={
+  inputFormat === 'sql'
+    ? `CREATE TABLE products (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  price DECIMAL(12,2) NOT NULL
+);`
+    : inputFormat === 'django'
+    ? `class Product(models.Model):
+    name = models.CharField(max_length=255)
+    price = models.DecimalField(max_digits=12, decimal_places=2)`
+    : `{
+  "models": [
+    {
+      "name": "Product",
+      "fields": [ { "name": "price", "type": "decimal" } ]
+    }
+  ]
+}`
+}
+                              className="min-h-[24rem] w-full rounded-2xl bg-transparent font-mono text-sm text-zinc-100 focus:outline-none"
+                              style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
                             />
                           </div>
                         </div>
                       )}
+                        </div>
+                        <div className="space-y-4">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                              <Label className="mb-1">Generated Schema</Label>
+                              <p className="text-sm text-zinc-500">Review and edit the schema output.</p>
+                            </div>
+                            {inputMode === 'ai' && generatedSchema && (
+                              <span className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-xs text-zinc-400">AI Assist Preview</span>
+                            )}
+                          </div>
+
+                          <div className="rounded-2xl border border-zinc-800 bg-zinc-950">
+                            <Editor
+                              value={generatedSchema}
+                              onValueChange={(value) => {
+                                setGeneratedSchema(value);
+                                setGeneratedConfig(null);
+                              }}
+                              highlight={(code) => highlightCode(code, inputFormat)}
+                              padding={16}
+                              textareaId="generated-schema-editor"
+                              placeholder="Generated schema will appear here... (You can edit it once generated)"
+                              className="min-h-[24rem] w-full rounded-2xl bg-transparent font-mono text-sm text-zinc-100 focus:outline-none"
+                              style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
+                            />
+                          </div>
+                        </div>
+                      </div>
 
                       <Button 
                         onClick={handleGenerate} 
-                        disabled={(builderMode === 'ai' ? !generatedSchema : !rawInput) || parsing}
-                        className="w-full bg-orange-600 hover:bg-orange-700 h-12 text-lg font-semibold"
+                        disabled={(inputMode === 'ai' ? !generatedSchema : !rawInput) || parsing}
+                        className="w-full bg-[#9a3412] hover:bg-[#7c2d12] h-14 text-lg font-semibold"
                       >
                         {parsing ? (
                           <span className="flex items-center gap-2">
