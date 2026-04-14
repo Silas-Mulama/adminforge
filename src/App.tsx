@@ -864,7 +864,10 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                   <DashboardRenderer 
                     workspaceId={activeWorkspace.id} 
                     schema={projects.find(s => s.id === selectedProject.id) || selectedProject} 
-                    onBack={() => setSelectedProject(null)} 
+                    onBack={() => {
+                      setSelectedProject(null);
+                      fetchProjects();
+                    }} 
                   />
                 </motion.div>
               ) : view === 'dashboard' ? (
