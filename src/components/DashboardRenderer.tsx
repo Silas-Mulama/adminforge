@@ -361,7 +361,7 @@ export function DashboardRenderer({ workspaceId, schema, onBack }: DashboardRend
              hover:bg-zinc-800 hover:text-white 
              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 
              disabled:opacity-50 disabled:pointer-events-none 
-             rounded-md"
+             rounded-md cursor-pointer shadow-sm shadow-zinc-900/20"
           >
             {isExporting ? 'Exporting...' : 'Export JSON'}
           </Button>
