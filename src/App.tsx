@@ -936,16 +936,18 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                         </Tabs>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>Input Format</Label>
-                        <Tabs value={inputType} onValueChange={(v: any) => setInputType(v)} className="w-full">
-                          <TabsList className="grid w-full grid-cols-3 bg-zinc-950 border border-zinc-800">
-                            <TabsTrigger value="sql" className="text-zinc-400 data-[state=active]:text-white data-[state=active]:bg-zinc-800">SQL CREATE</TabsTrigger>
-                            <TabsTrigger value="django" className="text-zinc-400 data-[state=active]:text-white data-[state=active]:bg-zinc-800">Django Models</TabsTrigger>
-                            <TabsTrigger value="json" className="text-zinc-400 data-[state=active]:text-white data-[state=active]:bg-zinc-800">JSON Schema</TabsTrigger>
-                          </TabsList>
-                        </Tabs>
-                      </div>
+                      {builderMode === 'manual' && (
+                        <div className="space-y-2">
+                          <Label>Input Format</Label>
+                          <Tabs value={inputType} onValueChange={(v: any) => setInputType(v)} className="w-full">
+                            <TabsList className="grid w-full grid-cols-3 bg-zinc-950 border border-zinc-800">
+                              <TabsTrigger value="sql" className="text-zinc-400 data-[state=active]:text-white data-[state=active]:bg-zinc-800">SQL CREATE</TabsTrigger>
+                              <TabsTrigger value="django" className="text-zinc-400 data-[state=active]:text-white data-[state=active]:bg-zinc-800">Django Models</TabsTrigger>
+                              <TabsTrigger value="json" className="text-zinc-400 data-[state=active]:text-white data-[state=active]:bg-zinc-800">JSON Schema</TabsTrigger>
+                            </TabsList>
+                          </Tabs>
+                        </div>
+                      )}
 
                       {builderMode === 'ai' ? (
                         <>
