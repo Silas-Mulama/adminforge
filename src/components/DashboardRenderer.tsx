@@ -342,7 +342,7 @@ export function DashboardRenderer({ workspaceId, schema, onBack }: DashboardRend
           </div>
         </div>
         <div className="flex items-center gap-3 justify-end lg:justify-start lg:flex-1 min-w-0 max-w-full lg:max-w-[60%]">
-          <Button
+          <Button 
             onClick={async () => {
               setIsExporting(true);
               try {
@@ -356,7 +356,7 @@ export function DashboardRenderer({ workspaceId, schema, onBack }: DashboardRend
               }
             }}
             disabled={isExporting}
-            className="bg-zinc-900 hover:bg-zinc-800 h-11 px-4 text-sm"
+            className="border border-zinc-600 text-zinc-200 hover:bg-zinc-800 h-11 px-4 text-sm"
           >
             {isExporting ? 'Exporting...' : 'Export JSON'}
           </Button>
