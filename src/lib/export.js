@@ -54,18 +54,27 @@ export async function exportProject(projectId, projectName) {
 
   const { data: project, error: projectError } = await supabase
     .from('projects')
-    .select('id,name,slug,workspace_id,config,parsed_config,schema,raw_schema,inputType')
+    .select('*')
     .eq('id', projectId)
     .single();
 
-  if (projectError || !project) {
+  if (projectError) {
+    throw new Error(`Project query failed: ${projectError.message || JSON.stringify(projectError)}`);
+  }
+
+  if (!project) {
     throw new Error('Project not found.');
+  }
+
+  const workspaceId = project.workspace_id ?? project.workspaceId;
+  if (!workspaceId) {
+    throw new Error('Project workspace not found.');
   }
 
   const { data: membership, error: membershipError } = await supabase
     .from('memberships')
     .select('id')
-    .eq('workspace_id', project.workspace_id)
+    .eq('workspace_id', workspaceId)
     .eq('user_id', user.id)
     .single();
 
