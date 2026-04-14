@@ -193,6 +193,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
   const [builderMode, setBuilderMode] = useState<'manual' | 'ai'>('manual');
   const [aiPrompt, setAiPrompt] = useState('');
   const [generatedSchema, setGeneratedSchema] = useState('');
+  const [generatedConfig, setGeneratedConfig] = useState<SchemaConfig | null>(null);
   const [generatedSchemaError, setGeneratedSchemaError] = useState<string | null>(null);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [parsing, setParsing] = useState(false);
@@ -509,15 +510,18 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
     }
 
     setGeneratedSchemaError(null);
+    setGeneratedConfig(null);
     setAiGenerating(true);
 
     try {
-      const config = await generateSchemaFromDescription(aiPrompt.trim(), inputType);
+      const generatedSource = await generateSchemaFromDescription(aiPrompt.trim(), inputType);
+      const config = await parseSchema(generatedSource, inputType);
       if (!validateSchemaConfig(config)) {
         throw new Error('AI returned an invalid schema structure.');
       }
 
-      setGeneratedSchema(JSON.stringify(config, null, 2));
+      setGeneratedSchema(generatedSource);
+      setGeneratedConfig(config);
       toast.success('AI generated a schema. Review it below and then create the dashboard.');
     } catch (error: any) {
       console.error('AI Schema Generation Error:', error);
@@ -545,16 +549,14 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
           return;
         }
 
-        try {
-          config = JSON.parse(generatedSchema);
-        } catch (error) {
-          toast.error('Generated schema JSON is invalid. Please fix it before generating the dashboard.');
-          return;
-        }
-
-        if (!validateSchemaConfig(config)) {
-          toast.error('Generated schema is not valid. Please review the JSON output.');
-          return;
+        if (generatedConfig) {
+          config = generatedConfig;
+        } else {
+          config = await parseSchema(generatedSchema, inputType);
+          if (!validateSchemaConfig(config)) {
+            toast.error('Generated schema is not valid. Please review the output.');
+            return;
+          }
         }
 
         sourceDescription = `Generated from AI Assist (${inputType.toUpperCase()})`;
@@ -979,7 +981,10 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                             <div className="relative">
                               <textarea
                                 value={generatedSchema}
-                                onChange={(e) => setGeneratedSchema(e.target.value)}
+                                onChange={(e) => {
+                                  setGeneratedSchema(e.target.value);
+                                  setGeneratedConfig(null);
+                                }}
                                 placeholder="Generated schema will appear here..."
                                 className="w-full h-64 bg-zinc-950 border border-zinc-800 rounded-md p-4 font-mono text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500/50 resize-none"
                               />

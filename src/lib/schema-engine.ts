@@ -1,6 +1,17 @@
 import { SchemaConfig } from '@/src/types';
 
 export async function parseSchema(input: string, type: 'sql' | 'django' | 'json'): Promise<SchemaConfig> {
+  if (type === 'json') {
+    try {
+      const parsed = JSON.parse(input) as SchemaConfig;
+      if (validateSchemaConfig(parsed)) {
+        return parsed;
+      }
+    } catch (err) {
+      // fallback to AI parsing if raw JSON is not normalized
+    }
+  }
+
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY ?? process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not configured in the environment.');
@@ -93,7 +104,7 @@ export function validateSchemaConfig(schema: any): schema is SchemaConfig {
   );
 }
 
-export async function generateSchemaFromDescription(description: string, style: 'sql' | 'django' | 'json'): Promise<SchemaConfig> {
+export async function generateSchemaFromDescription(description: string, style: 'sql' | 'django' | 'json'): Promise<string> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY ?? process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not configured in the environment.');
@@ -102,60 +113,41 @@ export async function generateSchemaFromDescription(description: string, style: 
   const { GoogleGenAI, Type } = await import('@google/genai');
   const ai = new GoogleGenAI({ apiKey });
 
-  const prompt = `
-    Generate a normalized SchemaConfig JSON object for the following user request.
-    User request:
-    ${description}
+  let prompt = '';
 
-    Use the requested source style: ${style.toUpperCase()}.
-    Do not output any markdown, explanation, or text outside of the JSON object.
-    The JSON must contain "models", each with "name", "fields" (array of {name, type, required, related_model}),
-    and "relationships" ({foreign_keys, many_to_many}).
-    Field types should be one of: CharField, IntegerField, BooleanField, DateTimeField, ForeignKey, ManyToManyField, FileField.
-  `;
+  if (style === 'sql') {
+    prompt = `
+      Generate SQL CREATE TABLE statements for the following user request.
+      User request:
+      ${description}
+
+      Output only valid SQL statements using standard PostgreSQL syntax. Do not include markdown or explanation.
+    `;
+  } else if (style === 'django') {
+    prompt = `
+      Generate Django model class definitions for the following user request.
+      User request:
+      ${description}
+
+      Output only valid Python/Django model code. Do not include markdown or explanation.
+    `;
+  } else {
+    prompt = `
+      Generate a normalized SchemaConfig JSON object for the following user request.
+      User request:
+      ${description}
+
+      Output only JSON with a "models" array. Each model should include "name", "fields" (array of {name, type, required, related_model}), and "relationships" ({foreign_keys, many_to_many}).
+      Field types should be one of: CharField, IntegerField, BooleanField, DateTimeField, ForeignKey, ManyToManyField, FileField.
+    `;
+  }
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            models: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  name: { type: Type.STRING },
-                  fields: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        name: { type: Type.STRING },
-                        type: { type: Type.STRING },
-                        required: { type: Type.BOOLEAN },
-                        related_model: { type: Type.STRING }
-                      },
-                      required: ["name", "type", "required"]
-                    }
-                  },
-                  relationships: {
-                    type: Type.OBJECT,
-                    properties: {
-                      foreign_keys: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      many_to_many: { type: Type.ARRAY, items: { type: Type.STRING } }
-                    }
-                  }
-                },
-                required: ["name", "fields", "relationships"]
-              }
-            }
-          },
-          required: ["models"]
-        }
+        responseMimeType: "text/plain"
       }
     });
 
@@ -163,7 +155,7 @@ export async function generateSchemaFromDescription(description: string, style: 
       throw new Error('Empty response from AI model');
     }
 
-    return JSON.parse(response.text) as SchemaConfig;
+    return response.text.trim();
   } catch (error: any) {
     console.error('AI Generation Error:', error);
     throw new Error(`AI schema generation failed: ${error.message || 'Unknown error'}`);
