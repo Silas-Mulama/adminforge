@@ -356,7 +356,12 @@ export function DashboardRenderer({ workspaceId, schema, onBack }: DashboardRend
               }
             }}
             disabled={isExporting}
-            className="border border-zinc-600 text-zinc-200 hover:bg-zinc-800 h-11 px-4 text-sm"
+            className="h-11 px-4 text-sm font-medium transition-colors 
+             bg-zinc-900 text-zinc-200 border border-zinc-700 
+             hover:bg-zinc-800 hover:text-white 
+             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 
+             disabled:opacity-50 disabled:pointer-events-none 
+             rounded-md"
           >
             {isExporting ? 'Exporting...' : 'Export JSON'}
           </Button>
