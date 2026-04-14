@@ -1144,86 +1144,67 @@ placeholder={
                         </div>
                       )}
                         </div>
-                        <AnimatePresence mode="wait">
-                          <motion.div
-                            key={generatedSchema || 'empty-ai-output'}
-                            initial={{ opacity: 0, y: 12, scale: 0.99 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: -10, scale: 0.98 }}
-                            transition={{ duration: 0.24, ease: 'easeOut' }}
-                            className="space-y-4"
-                          >
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                              <div>
-                                <Label className="mb-1">{inputMode === 'manual' ? 'AI Suggestions' : 'Generated Schema'}</Label>
-                                <p className="text-sm text-zinc-500">
-                                  {inputMode === 'manual'
-                                    ? 'Review AI suggestions for your current schema here. Apply them if you want improved syntax, or continue with your original input.'
-                                    : 'Review and edit the generated schema output.'}
-                                </p>
-                              </div>
-                              {inputMode === 'ai' && generatedSchema && (
-                                <span className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-xs text-zinc-400">AI Assist Preview</span>
-                              )}
+                        <div className="space-y-4">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                              <Label className="mb-1">{inputMode === 'manual' ? 'AI Suggestions' : 'Generated Schema'}</Label>
+                              <p className="text-sm text-zinc-500">
+                                {inputMode === 'manual'
+                                  ? 'Review AI suggestions for your current schema here. Apply them if you want improved syntax, or continue with your original input.'
+                                  : 'Review and edit the generated schema output.'}
+                              </p>
                             </div>
+                            {inputMode === 'ai' && generatedSchema && (
+                              <span className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-xs text-zinc-400">AI Assist Preview</span>
+                            )}
+                          </div>
 
-                            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 max-h-[24rem] overflow-auto">
-                              <Editor
-                                value={generatedSchema}
-                                onValueChange={(value) => {
-                                  setGeneratedSchema(value);
-                                  setGeneratedConfig(null);
+                          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 max-h-[24rem] overflow-auto">
+                            <Editor
+                              value={generatedSchema}
+                              onValueChange={(value) => {
+                                setGeneratedSchema(value);
+                                setGeneratedConfig(null);
+                              }}
+                              highlight={(code) => highlightCode(code, inputFormat)}
+                              padding={16}
+                              textareaId="generated-schema-editor"
+                              placeholder={inputMode === 'manual'
+                                ? 'AI suggestions will appear here after review. You can edit them or apply the suggestion back to your raw schema.'
+                                : 'Generated schema will appear here... (You can edit it once generated)'
+                              }
+                              className="min-h-[24rem] w-full rounded-2xl bg-transparent font-mono text-sm text-zinc-100 focus:outline-none overflow-auto"
+                              style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
+                            />
+                          </div>
+
+                          {inputMode === 'manual' && generatedSchema && generatedSchema.trim() !== rawInput.trim() && (
+                            <div className="flex justify-end">
+                              <Button
+                                onClick={() => {
+                                  setRawInput(generatedSchema);
+                                  toast.success('AI suggestion applied to the raw schema editor.');
                                 }}
-                                highlight={(code) => highlightCode(code, inputFormat)}
-                                padding={16}
-                                textareaId="generated-schema-editor"
-                                placeholder={inputMode === 'manual'
-                                  ? 'AI suggestions will appear here after review. You can edit them or apply the suggestion back to your raw schema.'
-                                  : 'Generated schema will appear here... (You can edit it once generated)'
-                                }
-                                className="min-h-[24rem] w-full rounded-2xl bg-transparent font-mono text-sm text-zinc-100 focus:outline-none overflow-auto"
-                                style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
-                              />
+                                className="bg-zinc-800 hover:bg-zinc-700 text-sm rounded-full px-4 py-2"
+                              >
+                                Use AI suggestion
+                              </Button>
                             </div>
+                          )}
 
-                            {inputMode === 'manual' && generatedSchema && generatedSchema.trim() !== rawInput.trim() && (
-                              <motion.div
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="flex justify-end"
-                              >
-                                <Button
-                                  onClick={() => {
-                                    setRawInput(generatedSchema);
-                                    toast.success('AI suggestion applied to the raw schema editor.');
-                                  }}
-                                  className="bg-zinc-800 hover:bg-zinc-700 text-sm rounded-full px-4 py-2"
-                                >
-                                  Use AI suggestion
-                                </Button>
-                              </motion.div>
-                            )}
-
-                            {inputMode === 'manual' && (
-                              <motion.div
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.24, delay: 0.05 }}
-                                className="space-y-2"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <Label className="mb-1">Reason for the suggestion</Label>
-                                </div>
-                                <div className="rounded-2xl border border-zinc-800 bg-zinc-950 max-h-[18rem] overflow-auto p-4 text-sm text-zinc-200 whitespace-pre-wrap">
-                                  {generatedSchemaReason
-                                    ? generatedSchemaReason
-                                    : 'AI will explain why the suggestion was made, what to improve, and features to consider for the future.'}
-                                </div>
-                              </motion.div>
-                            )}
-                          </motion.div>
-                        </AnimatePresence>
+                          {inputMode === 'manual' && (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <Label className="mb-1">Reason for the suggestion</Label>
+                              </div>
+                              <div className="rounded-2xl border border-zinc-800 bg-zinc-950 max-h-[18rem] overflow-auto p-4 text-sm text-zinc-200 whitespace-pre-wrap">
+                                {generatedSchemaReason
+                                  ? generatedSchemaReason
+                                  : 'AI will explain why the suggestion was made, what to improve, and features to consider for the future.'}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <Button 
