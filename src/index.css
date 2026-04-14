@@ -129,15 +129,4 @@
   html {
     @apply font-sans;
   }
-
-  button,
-  button[data-slot="button"] {
-    background-color: #f97316 !important;
-    color: #000 !important;
-  }
-
-  button:hover,
-  button[data-slot="button"]:hover {
-    background-color: #ea580c !important;
-  }
 }
