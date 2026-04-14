@@ -162,7 +162,7 @@ export async function generateSchemaFromDescription(description: string, style: 
   }
 }
 
-export async function improveSchemaWithAi(input: string, style: 'sql' | 'django' | 'json'): Promise<string> {
+export async function reviewSchemaWithAi(input: string, style: 'sql' | 'django' | 'json'): Promise<{ review: string; reason: string }> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY ?? process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not configured in the environment.');
@@ -176,8 +176,10 @@ export async function improveSchemaWithAi(input: string, style: 'sql' | 'django'
   if (style === 'sql') {
     prompt = `
       Review and improve the following SQL schema.
-      Preserve the existing table and column intent, fix syntax issues, and output only valid PostgreSQL CREATE TABLE statements.
-      Do not include any explanation or markdown formatting.
+      Preserve the existing table and column intent, fix syntax issues, and output a JSON object with keys \"review\" and \"reason\".
+      The review key should contain valid PostgreSQL CREATE TABLE statements.
+      The reason key should explain why the changes were suggested, highlight future features to consider, and note any areas to improve.
+      Do not include markdown formatting.
 
       Input SQL:
       ${input}
@@ -185,8 +187,10 @@ export async function improveSchemaWithAi(input: string, style: 'sql' | 'django'
   } else if (style === 'django') {
     prompt = `
       Review and improve the following Django model definitions.
-      Preserve the existing model and field intent, fix syntax issues, and output only valid Python/Django model code.
-      Do not include any explanation or markdown formatting.
+      Preserve the existing model and field intent, fix syntax issues, and output a JSON object with keys \"review\" and \"reason\".
+      The review key should contain valid Python/Django model code.
+      The reason key should explain why the changes were suggested, highlight future features to consider, and note any areas to improve.
+      Do not include markdown formatting.
 
       Input Django models:
       ${input}
@@ -194,8 +198,10 @@ export async function improveSchemaWithAi(input: string, style: 'sql' | 'django'
   } else {
     prompt = `
       Review and improve the following JSON schema.
-      Preserve the structure and semantics, fix any formatting or field issues, and output only valid JSON.
-      Do not include any explanation or markdown formatting.
+      Preserve the structure and semantics, fix any formatting or field issues, and output a JSON object with keys \"review\" and \"reason\".
+      The review key should contain valid JSON.
+      The reason key should explain why the changes were suggested, highlight future features to consider, and note any areas to improve.
+      Do not include markdown formatting.
 
       Input JSON schema:
       ${input}
@@ -207,7 +213,15 @@ export async function improveSchemaWithAi(input: string, style: 'sql' | 'django'
       model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
-        responseMimeType: "text/plain"
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            review: { type: Type.STRING },
+            reason: { type: Type.STRING }
+          },
+          required: ["review", "reason"]
+        }
       }
     });
 
@@ -215,7 +229,7 @@ export async function improveSchemaWithAi(input: string, style: 'sql' | 'django'
       throw new Error('Empty response from AI model');
     }
 
-    return response.text.trim();
+    return JSON.parse(response.text) as { review: string; reason: string };
   } catch (error: any) {
     console.error('AI Review Error:', error);
     throw new Error(`AI schema review failed: ${error.message || 'Unknown error'}`);

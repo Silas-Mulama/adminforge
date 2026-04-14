@@ -59,7 +59,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Toaster, toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
-import { parseSchema, generateDashboardConfig, generateSchemaFromDescription, improveSchemaWithAi, validateSchemaConfig } from '@/src/lib/schema-engine';
+import { parseSchema, generateDashboardConfig, generateSchemaFromDescription, reviewSchemaWithAi, validateSchemaConfig } from '@/src/lib/schema-engine';
 import { SchemaConfig } from '@/src/types';
 import { DashboardRenderer } from './components/DashboardRenderer';
 import { AuthForm } from './components/AuthForm';
@@ -209,6 +209,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
   const [aiPrompt, setAiPrompt] = useState('');
   const [generatedSchema, setGeneratedSchema] = useState('');
   const [generatedConfig, setGeneratedConfig] = useState<SchemaConfig | null>(null);
+  const [generatedSchemaReason, setGeneratedSchemaReason] = useState('');
   const [generatedSchemaError, setGeneratedSchemaError] = useState<string | null>(null);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [isReviewing, setIsReviewing] = useState(false);
@@ -577,11 +578,13 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
 
     setGeneratedSchemaError(null);
     setGeneratedConfig(null);
+    setGeneratedSchemaReason('');
     setIsReviewing(true);
 
     try {
-      const review = await improveSchemaWithAi(rawInput, inputFormat);
-      setGeneratedSchema(review);
+      const review = await reviewSchemaWithAi(rawInput, inputFormat);
+      setGeneratedSchema(review.review);
+      setGeneratedSchemaReason(review.reason);
       toast.success('AI suggestions are ready. Review them on the right and apply if desired.');
     } catch (error: any) {
       console.error('AI Review Error:', error);
@@ -1089,7 +1092,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <Label>Raw Schema Content</Label>
-                            <div className="rounded-2xl border border-zinc-800 bg-zinc-950">
+                            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 max-h-[32rem] overflow-auto">
                               <Editor
                                 value={rawInput}
                                 onValueChange={(value) => setRawInput(value)}
@@ -1116,7 +1119,7 @@ placeholder={
   ]
 }`
 }
-                                className="min-h-[24rem] w-full rounded-2xl bg-transparent font-mono text-sm text-zinc-100 focus:outline-none"
+                                className="min-h-[24rem] w-full rounded-2xl bg-transparent font-mono text-sm text-zinc-100 focus:outline-none overflow-auto"
                                 style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
                               />
                             </div>
@@ -1170,7 +1173,7 @@ placeholder={
                                 ? 'AI suggestions will appear here after review. You can edit them or apply the suggestion back to your raw schema.'
                                 : 'Generated schema will appear here... (You can edit it once generated)'
                               }
-                              className="min-h-[24rem] w-full rounded-2xl bg-transparent font-mono text-sm text-zinc-100 focus:outline-none"
+                              className="min-h-[24rem] w-full rounded-2xl bg-transparent font-mono text-sm text-zinc-100 focus:outline-none overflow-auto"
                               style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
                             />
                           </div>
@@ -1186,6 +1189,19 @@ placeholder={
                               >
                                 Use AI suggestion
                               </Button>
+                            </div>
+                          )}
+
+                          {inputMode === 'manual' && (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <Label className="mb-1">Reason for the suggestion</Label>
+                              </div>
+                              <div className="rounded-2xl border border-zinc-800 bg-zinc-950 max-h-[18rem] overflow-auto p-4 text-sm text-zinc-200 whitespace-pre-wrap">
+                                {generatedSchemaReason
+                                  ? generatedSchemaReason
+                                  : 'AI will explain why the suggestion was made, what to improve, and features to consider for the future.'}
+                              </div>
                             </div>
                           )}
                         </div>
