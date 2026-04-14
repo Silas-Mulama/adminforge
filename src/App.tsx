@@ -894,18 +894,24 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 border-b border-zinc-800/50 flex flex-col gap-3 justify-center px-4 md:px-8 bg-zinc-950/50 backdrop-blur-sm md:flex-row md:items-center md:justify-between">
-          <h2 className="font-semibold text-lg text-center md:text-left">
+        <header className="h-16 border-b border-zinc-800/50 flex items-center justify-between px-4 md:px-8 bg-zinc-950/50 backdrop-blur-sm">
+          <h2 className="font-semibold text-lg truncate text-center md:text-left">
             {view === 'dashboard' ? 'My Dashboards' : 'Generate New Dashboard'}
           </h2>
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center gap-3">
             <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
               <SheetTrigger render={<Button variant="ghost" size="icon" className="md:hidden text-zinc-400"><Menu className="w-5 h-5" /></Button>} />
               <SheetContent side="left" className="bg-zinc-950 border-r border-zinc-800 text-white p-0">
                 {sidebarContent}
               </SheetContent>
             </Sheet>
-            <Button variant="ghost" size="icon" className="text-zinc-400">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-zinc-400"
+              onClick={() => setIsProfileModalOpen(true)}
+              aria-label="Open profile settings"
+            >
               <Settings className="w-5 h-5" />
             </Button>
           </div>
