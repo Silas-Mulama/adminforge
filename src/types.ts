@@ -16,6 +16,22 @@ export interface ModelConfig {
 
 export interface SchemaConfig {
   models: ModelConfig[];
+  ui_config?: UIConfig;
+}
+
+export interface UIColumnConfig {
+  name: string;
+  label?: string;
+  hidden?: boolean;
+  order?: number;
+}
+
+export interface UIModelConfig {
+  columns: UIColumnConfig[];
+}
+
+export interface UIConfig {
+  [modelName: string]: UIModelConfig;
 }
 
 export interface DashboardConfig {
