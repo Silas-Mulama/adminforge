@@ -1022,11 +1022,11 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
 
                       <div className="space-y-2">
                         <Label>Input Mode</Label>
-                        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-1">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-1">
                           <button
                             type="button"
                             onClick={() => setInputMode('manual')}
-                            className={`flex items-start gap-3 rounded-xl px-4 py-4 text-left transition ${inputMode === 'manual' ? 'bg-zinc-800 text-white shadow-sm shadow-zinc-950/20' : 'bg-transparent text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100'}`}
+                            className={`flex w-full items-start gap-3 rounded-xl px-4 py-4 text-left transition focus:outline-none focus:ring-2 focus:ring-orange-500/30 ${inputMode === 'manual' ? 'bg-zinc-800 text-white shadow-sm shadow-zinc-950/20' : 'bg-transparent text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100'}`}
                           >
                             <ClipboardList className="w-5 h-5" />
                             <div>
@@ -1037,7 +1037,7 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                           <button
                             type="button"
                             onClick={() => setInputMode('ai')}
-                            className={`flex items-start gap-3 rounded-xl px-4 py-4 text-left transition ${inputMode === 'ai' ? 'bg-zinc-800 text-white shadow-sm shadow-zinc-950/20' : 'bg-transparent text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100'}`}
+                            className={`flex w-full items-start gap-3 rounded-xl px-4 py-4 text-left transition focus:outline-none focus:ring-2 focus:ring-orange-500/30 ${inputMode === 'ai' ? 'bg-zinc-800 text-white shadow-sm shadow-zinc-950/20' : 'bg-transparent text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100'}`}
                           >
                             <Sparkles className="w-5 h-5" />
                             <div>
@@ -1050,25 +1050,25 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
 
                       <div className="space-y-2">
                         <Label>Input Format</Label>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                           <button
                             type="button"
                             onClick={() => setInputFormat('sql')}
-                            className={`rounded-2xl border px-3 py-2 text-sm font-medium transition ${inputFormat === 'sql' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
+                            className={`w-full rounded-2xl border px-3 py-3 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-orange-500/30 ${inputFormat === 'sql' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
                           >
                             SQL CREATE
                           </button>
                           <button
                             type="button"
                             onClick={() => setInputFormat('django')}
-                            className={`rounded-2xl border px-3 py-2 text-sm font-medium transition ${inputFormat === 'django' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
+                            className={`w-full rounded-2xl border px-3 py-3 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-orange-500/30 ${inputFormat === 'django' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
                           >
                             Django Models
                           </button>
                           <button
                             type="button"
                             onClick={() => setInputFormat('json')}
-                            className={`rounded-2xl border px-3 py-2 text-sm font-medium transition ${inputFormat === 'json' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
+                            className={`w-full rounded-2xl border px-3 py-3 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-orange-500/30 ${inputFormat === 'json' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'}`}
                           >
                             JSON Schema
                           </button>
