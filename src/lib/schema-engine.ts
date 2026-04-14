@@ -76,6 +76,100 @@ export async function parseSchema(input: string, type: 'sql' | 'django' | 'json'
   }
 }
 
+export function validateSchemaConfig(schema: any): schema is SchemaConfig {
+  return (
+    schema &&
+    Array.isArray(schema.models) &&
+    schema.models.every((model: any) =>
+      model &&
+      typeof model.name === 'string' &&
+      Array.isArray(model.fields) &&
+      model.fields.every((field: any) =>
+        typeof field.name === 'string' &&
+        typeof field.type === 'string' &&
+        typeof field.required === 'boolean'
+      )
+    )
+  );
+}
+
+export async function generateSchemaFromDescription(description: string, style: 'sql' | 'django' | 'json'): Promise<SchemaConfig> {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY ?? process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured in the environment.');
+  }
+
+  const { GoogleGenAI, Type } = await import('@google/genai');
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `
+    Generate a normalized SchemaConfig JSON object for the following user request.
+    User request:
+    ${description}
+
+    Use the requested source style: ${style.toUpperCase()}.
+    Do not output any markdown, explanation, or text outside of the JSON object.
+    The JSON must contain "models", each with "name", "fields" (array of {name, type, required, related_model}),
+    and "relationships" ({foreign_keys, many_to_many}).
+    Field types should be one of: CharField, IntegerField, BooleanField, DateTimeField, ForeignKey, ManyToManyField, FileField.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            models: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  fields: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        name: { type: Type.STRING },
+                        type: { type: Type.STRING },
+                        required: { type: Type.BOOLEAN },
+                        related_model: { type: Type.STRING }
+                      },
+                      required: ["name", "type", "required"]
+                    }
+                  },
+                  relationships: {
+                    type: Type.OBJECT,
+                    properties: {
+                      foreign_keys: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      many_to_many: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    }
+                  }
+                },
+                required: ["name", "fields", "relationships"]
+              }
+            }
+          },
+          required: ["models"]
+        }
+      }
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from AI model');
+    }
+
+    return JSON.parse(response.text) as SchemaConfig;
+  } catch (error: any) {
+    console.error('AI Generation Error:', error);
+    throw new Error(`AI schema generation failed: ${error.message || 'Unknown error'}`);
+  }
+}
+
 export function generateDashboardConfig(schema: SchemaConfig) {
   const config: any = { models: {} };
   

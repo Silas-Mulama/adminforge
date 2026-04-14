@@ -52,7 +52,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Toaster, toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
-import { parseSchema, generateDashboardConfig } from '@/src/lib/schema-engine';
+import { parseSchema, generateDashboardConfig, generateSchemaFromDescription, validateSchemaConfig } from '@/src/lib/schema-engine';
 import { SchemaConfig } from '@/src/types';
 import { DashboardRenderer } from './components/DashboardRenderer';
 import { AuthForm } from './components/AuthForm';
@@ -190,6 +190,11 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
   const [rawInput, setRawInput] = useState('');
   const [newDashboardName, setNewDashboardName] = useState('');
   const [inputType, setInputType] = useState<'sql' | 'django' | 'json'>('sql');
+  const [builderMode, setBuilderMode] = useState<'manual' | 'ai'>('manual');
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [generatedSchema, setGeneratedSchema] = useState('');
+  const [generatedSchemaError, setGeneratedSchemaError] = useState<string | null>(null);
+  const [aiGenerating, setAiGenerating] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -497,37 +502,87 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
     }
   };
 
+  const handleGenerateAiSchema = async () => {
+    if (!aiPrompt.trim()) {
+      toast.error('Please describe the schema you want to generate');
+      return;
+    }
+
+    setGeneratedSchemaError(null);
+    setAiGenerating(true);
+
+    try {
+      const config = await generateSchemaFromDescription(aiPrompt.trim(), inputType);
+      if (!validateSchemaConfig(config)) {
+        throw new Error('AI returned an invalid schema structure.');
+      }
+
+      setGeneratedSchema(JSON.stringify(config, null, 2));
+      toast.success('AI generated a schema. Review it below and then create the dashboard.');
+    } catch (error: any) {
+      console.error('AI Schema Generation Error:', error);
+      setGeneratedSchemaError(error?.message || 'Failed to generate schema using AI.');
+      toast.error('AI schema generation failed. Please try again.');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!activeWorkspace || !user) {
       toast.error('Please select or create a workspace first');
       return;
     }
-    if (!rawInput) {
-      toast.error('Please enter a schema');
-      return;
-    }
-    
+
     setParsing(true);
     try {
-      const config = await parseSchema(rawInput, inputType);
+      let config: SchemaConfig;
+      let sourceDescription = '';
+
+      if (builderMode === 'ai') {
+        if (!generatedSchema) {
+          toast.error('Please generate a schema first using AI Assist');
+          return;
+        }
+
+        try {
+          config = JSON.parse(generatedSchema);
+        } catch (error) {
+          toast.error('Generated schema JSON is invalid. Please fix it before generating the dashboard.');
+          return;
+        }
+
+        if (!validateSchemaConfig(config)) {
+          toast.error('Generated schema is not valid. Please review the JSON output.');
+          return;
+        }
+
+        sourceDescription = `Generated from AI Assist (${inputType.toUpperCase()})`;
+      } else {
+        if (!rawInput) {
+          toast.error('Please enter a schema');
+          return;
+        }
+
+        config = await parseSchema(rawInput, inputType);
+        sourceDescription = `Generated from ${inputType.toUpperCase()} schema`;
+      }
+
       const dashboardConfig = generateDashboardConfig(config);
 
       const insertObj: any = {
         workspace_id: activeWorkspace.id,
         name: newDashboardName.trim() || `Project ${projects.length + 1}`,
-        description: `Generated from ${inputType.toUpperCase()} schema`,
-        inputType,
+        description: sourceDescription,
+        inputType: builderMode === 'ai' ? `ai-${inputType}` : inputType,
         created_by: user.id,
-        config: { ...config, dashboardConfig } // Merging for simplicity in this demo
+        config: { ...config, dashboardConfig }
       };
 
-      // Try inserting with `inputType` first. If the projects table doesn't have that column
-      // (some users' DBs), retry without it and notify the user.
       let insertResult = await supabase.from('projects').insert(insertObj);
       if (insertResult.error) {
         const msg = insertResult.error.message || String(insertResult.error);
         if (msg.includes("'inputType'") || msg.includes('inputType')) {
-          // Retry without inputType
           const fallback = { ...insertObj };
           delete fallback.inputType;
           const retryResult = await supabase.from('projects').insert(fallback);
@@ -540,6 +595,8 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
       
       toast.success('Dashboard generated!');
       setRawInput('');
+      setAiPrompt('');
+      setGeneratedSchema('');
       setNewDashboardName('');
       setView('dashboard');
       fetchProjects();
@@ -868,6 +925,16 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                       </div>
 
                       <div className="space-y-2">
+                        <Label>Input Mode</Label>
+                        <Tabs value={builderMode} onValueChange={(v: any) => setBuilderMode(v)} className="w-full">
+                          <TabsList className="grid w-full grid-cols-2 bg-zinc-950 border border-zinc-800">
+                            <TabsTrigger value="manual" className="text-zinc-400 data-[state=active]:text-white data-[state=active]:bg-zinc-800">Manual Paste</TabsTrigger>
+                            <TabsTrigger value="ai" className="text-zinc-400 data-[state=active]:text-white data-[state=active]:bg-zinc-800">AI Assist</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      </div>
+
+                      <div className="space-y-2">
                         <Label>Input Format</Label>
                         <Tabs value={inputType} onValueChange={(v: any) => setInputType(v)} className="w-full">
                           <TabsList className="grid w-full grid-cols-3 bg-zinc-950 border border-zinc-800">
@@ -878,25 +945,68 @@ function AppContent({ onError }: { onError: (err: any) => void }) {
                         </Tabs>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>Raw Schema Content</Label>
-                        <div className="relative">
-                          <textarea
-                            value={rawInput}
-                            onChange={(e) => setRawInput(e.target.value)}
-                            placeholder={
-                              inputType === 'sql' ? 'CREATE TABLE products (\n  id INT PRIMARY KEY,\n  name VARCHAR(255)...\n);' :
-                              inputType === 'django' ? 'class Product(models.Model):\n    name = models.CharField(max_length=255)...' :
-                              '{\n  "models": [\n    {\n      "name": "Product",\n      "fields": [...]\n    }\n  ]\n}'
-                            }
-                            className="w-full h-64 bg-zinc-950 border border-zinc-800 rounded-md p-4 font-mono text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500/50 resize-none"
-                          />
+                      {builderMode === 'ai' ? (
+                        <>
+                          <div className="space-y-2">
+                            <Label>Describe your schema</Label>
+                            <div className="relative">
+                              <textarea
+                                value={aiPrompt}
+                                onChange={(e) => setAiPrompt(e.target.value)}
+                                placeholder="e.g. I want a product system with name, price, and category"
+                                className="w-full h-40 bg-zinc-950 border border-zinc-800 rounded-md p-4 font-mono text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500/50 resize-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <Button onClick={handleGenerateAiSchema} disabled={!aiPrompt.trim() || aiGenerating} className="w-full sm:w-auto bg-zinc-800 hover:bg-zinc-700">
+                              {aiGenerating ? 'Generating schema...' : 'Generate Candidate Schema'}
+                            </Button>
+                            {generatedSchema && (
+                              <span className="text-zinc-400 text-sm self-center">
+                                Review the generated schema below before creating the dashboard.
+                              </span>
+                            )}
+                          </div>
+
+                          {generatedSchemaError && (
+                            <p className="text-sm text-red-400">{generatedSchemaError}</p>
+                          )}
+
+                          <div className="space-y-2">
+                            <Label>Generated Schema (editable)</Label>
+                            <div className="relative">
+                              <textarea
+                                value={generatedSchema}
+                                onChange={(e) => setGeneratedSchema(e.target.value)}
+                                placeholder="Generated schema will appear here..."
+                                className="w-full h-64 bg-zinc-950 border border-zinc-800 rounded-md p-4 font-mono text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500/50 resize-none"
+                              />
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label>Raw Schema Content</Label>
+                          <div className="relative">
+                            <textarea
+                              value={rawInput}
+                              onChange={(e) => setRawInput(e.target.value)}
+                              placeholder={
+                                inputType === 'sql' ? 'CREATE TABLE products (\n  id INT PRIMARY KEY,\n  name VARCHAR(255)...\n);' :
+                                inputType === 'django' ? 'class Product(models.Model):\n    name = models.CharField(max_length=255)...' :
+                                '{\n  "models": [\n    {\n      "name": "Product",\n      "fields": [...]\n    }\n  ]\n}'
+                              }
+                              className="w-full h-64 bg-zinc-950 border border-zinc-800 rounded-md p-4 font-mono text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500/50 resize-none"
+                            />
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       <Button 
                         onClick={handleGenerate} 
-                        disabled={!rawInput || parsing}
+                        disabled={(builderMode === 'ai' ? !generatedSchema : !rawInput) || parsing}
                         className="w-full bg-orange-600 hover:bg-orange-700 h-12 text-lg font-semibold"
                       >
                         {parsing ? (
